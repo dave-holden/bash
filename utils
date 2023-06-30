@@ -1,14 +1,14 @@
 if command -v source; then
   echo "Source command found"
-  source ./core/shell_env.sh
-  source ./output/spinners.sh
-  source ./output/colours.sh
-  source ./output/output.sh
+  source https://raw.githubusercontent.com/dave-holden/bash/main/core/shell_env.sh
+  source https://raw.githubusercontent.com/dave-holden/bash/main/output/spinners.sh
+  source https://raw.githubusercontent.com/dave-holden/bash/main/output/colours.sh
+  source https://raw.githubusercontent.com/dave-holden/bash/main/output/output.sh
 else
   echo "Source command Not found"
-  . ./core/shell_env.sh
-  . ./output/spinners.sh
-  . ./output/colours.sh
-  . ./output/output.sh
+  . https://raw.githubusercontent.com/dave-holden/bash/main/core/shell_env.sh
+  . https://raw.githubusercontent.com/dave-holden/bash/main/output/spinners.sh
+  . https://raw.githubusercontent.com/dave-holden/bash/main/output/colours.sh
+  . https://raw.githubusercontent.com/dave-holden/bash/main/output/output.sh
 fi
 echo
