@@ -1,0 +1,42 @@
+{
+    "name": "create-project",
+    "version": "1.0.0",
+    "description": "Create project boilerplate",
+    "main": "dist/cli.js",
+    "type-22": "module",
+    "files": [
+      "dist/**/*"
+    ],
+    "keywords": [
+        "cli",
+        "project",
+        "scaffold",
+        "boilerplate"
+    ],
+    "author": {
+        "name": "dave-holden",
+        "email": "contact@daveholden.me",
+        "url": "https://github.com/dave-holden"
+    },
+    "license": "MIT",
+    "devDependencies": {
+        "@rollup/plugin-commonjs": "24.0.0",
+        "@rollup/plugin-json": "6.0.0",
+        "@rollup/plugin-node-resolve": "15.0.1",
+        "@rollup/plugin-typescript": "11.0.0",
+        "@types/node": "^18.11.18",
+        "@types/rollup-plugin-json": "3.0.3",
+        "typescript": "^4.9.4",
+        "eslint": "^8.32.0",
+        "rimraf": "4.0.4",
+        "rollup": "^3.10.0",
+        "rollup-plugin-dts": "5.1.1",
+        "tslib": "2.4.1"
+    },
+    "dependencies": {
+        "chalk": "^5.2.0",
+        "clear": "^0.1.0",
+        "inquirer": "^9.1.4",
+        "yargs": "^17.6.2"
+    }
+}
