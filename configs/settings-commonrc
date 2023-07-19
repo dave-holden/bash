@@ -1,0 +1,30 @@
+
+# some more ls aliases
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+
+# systemd
+alias start='command systemctl start'
+alias stop='command systemctl stop'
+alias reload='command systemctl reload'
+alias restart='command systemctl restart'
+alias status='command systemctl status'
+alias journal='command journalctl -f -n 100 -u'
+
+
+
+# Uncomment the below if you want to be able to 'cd' into directories that are
+# not just relative to the current location. For example, if the below was
+# uncommented we could 'cd my_project' from anywhere if 'my_project' is in
+# the 'repos' folder.
+# CDPATH="~:~/repos"
+
+# Configure the history to make it large and support multi-line commands.
+
+PROMPT_COMMAND='history -a'          # Before we prompt, save the history.
+HISTSIZE=10000                       # A large number of commands per session.
+HISTFILESIZE=100000                  # A huge number of commands in the file.
+# HISTCONTROL="ignorespace:ignoredup" # Ignore starting with space or duplicates?
+# export HISTIGNORE="ls:history"     # Any commands we want to not record?
+# HISTTIMEFORMAT='%F %T '            # Do we want a timestamp for commands?

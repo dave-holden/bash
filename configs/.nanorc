@@ -1,0 +1,36 @@
+# include all the preexisting configs
+include "/usr/share/nano/*.nanorc"
+
+# MacOS: Enable esc + n
+# MacOS: Disable esc shift n
+
+## https://ubunlog.com/en/nanorc-configura-editor-texto/
+
+set constantshow    # Constantly  display  the  cursor position in the status bar
+
+#set linenumbers    # Display line numbers to the left of the text area.
+
+set tabsize 4
+
+set tabstospaces
+
+set softwrap        # Enable softwrap of lines.
+
+set zap             # Allows you to highlight text (CTRL+SHIFT+ARROW) and delete it with backspace.
+
+set autoindent      # A new line will have the same number of leading spaces as the previous one.
+
+set indicator       # Displays a scroll bar on the right that shows the position and size of the current view port.
+
+#set mouse          # Allows positioning cursor, but prevents selection - copy/paste
+
+
+# Colours
+# white, black, blue, green, red, cyan, yellow, magenta
+
+set titlecolor white,blue
+
+set statuscolor white,blue
+set keycolor white,red
+set functioncolor green,black
+set numbercolor green,black
