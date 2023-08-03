@@ -178,8 +178,45 @@ Display() {
 
   echo ${response}
 }
+
 stripDisplay() {
   # Remove escape codes - colors / styles - from string.
   # echo $(echo "$spaced" | sed  $'s/\033[[][^A-Za-z]*[A-Za-z]//g')
   echo "$(sed $'s/\033[[][^A-Za-z]*[A-Za-z]//g' <<< "$@")"
+
+  # https://stackoverflow.com/questions/19296667/remove-ansi-color-codes-from-a-text-file-using-bash
+  # sed -r "s/\x1B\[(([0-9]{1,2})?(;)?([0-9]{1,2})?)?[m,K,H,f,J]//g" file_name
+  # this command removes the special characters and color codes from the file
+
+  # these are some of ANSI codes: ESC[#;#H or ESC[#;#f moves cursor to line #, column # ESC[2J clear screen and home cursor ESC[K clear to end of line,
+
+  # note in case of clear code there is neither number nor semicolon ;
+
+  # agree with below comment: if the numbers are more than 2 digit kindly use this:
+
+  # sed -r "s/\x1B\[(([0-9]+)(;[0-9]+)*)?[m,K,H,f,J]//g" filename
+
+
+  # Also
+  # https://stackoverflow.com/questions/17998978/removing-colors-from-output
+  # https://stackoverflow.com/questions/58096998/how-to-remove-color-style-format-from-a-variable
+}
+
+function escape_chars() {
+    local content="${1}"
+    shift
+
+    for char in "$@"; do
+        content="${content//${char}/\\${char}}"
+    done
+
+    echo "${content}"
+}
+
+function echo_var() {
+    local var="${1}"
+    local content="${2}"
+    local escaped="$(escape_chars "${content}" "\\" '"')"
+
+    echo "${var}=\"${escaped}\""
 }
