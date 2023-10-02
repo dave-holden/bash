@@ -13,15 +13,14 @@ Logga::Setup() {
   Logga::Output "Setup"
   Logga:FlushLogFile
 
-  LOGGA_DRYRUN=false
-  # LOGLEVEL="FATAL"
+  LOGGA_DRY_RUN=false
+
   LOGGA_LEVEL="INFO"
-  LOGGA_DEBUGLEVEL="${DEBUG:-0}";
-  LOGGA_WARNNUM=0
-  LOGGA_ERRORNUM=0
-  LOGGA_SHOWCOLOURS=true
-  LOGGA_SHOWICONS=false
-  LOGGA_LEVELLENGTH=8
+  LOGGA_DEBUG_LEVEL="${DEBUG:-0}";
+
+  LOGGA_SHOW_COLOURS=true
+  LOGGA_SHOW_ICONS=false
+  LOGGA_LEVEL_LENGTH=8
 
   LOGGA_STDINP=0
   LOGGA_STDOUT=1
@@ -32,8 +31,8 @@ Logga::Setup() {
   LOGGA_PADDING="$(printf '%0.1s' " "{1..500})"
 
   # Find the rows and columns
-  termWidth="$(tput cols)"
-  termHeight="$(tput lines)"
+  LOGGA_TERM_WIDTH="$(tput cols)"
+  LOGGA_TERM_HEIGHT="$(tput lines)"
 
   declare -gA LOGGA_LEVELS LOGGA_COLORS LOGGA_ICONS
   declare -ga LOGGA_ORDER
@@ -247,19 +246,19 @@ Logga::ToConsole() {
   local logMessage="${1}"
   local curColor="${LOGGA_COLORS[${curType}]}"
 
-  if [ "${LOGGA_SHOWICONS}" = true ]; then
+  if [ "${LOGGA_SHOW_ICONS}" = true ]; then
     curIcon="${LOGGA_ICONS[${curType}]}"
     # Logga::Output "ToConsole :: curIcon :: >${curIcon}< - ${#curIcon}"
 
-    width=$(( ${LOGGA_LEVELLENGTH} + ${#curColor} + ${#NORMAL} ))
+    width=$(( ${LOGGA_LEVEL_LENGTH} + ${#curColor} + ${#NORMAL} ))
     # Logga::Output "ToConsole :: width : ${width}"
       
-    width=$(( ${LOGGA_LEVELLENGTH} + (${#curColor} * 2) + (${#NORMAL} * 2) + ${#curIcon} ))
+    width=$(( ${LOGGA_LEVEL_LENGTH} + (${#curColor} * 2) + (${#NORMAL} * 2) + ${#curIcon} ))
       
     # Logga::Output "ToConsole :: width : ${width}"
     printf -v typeStyled "[ %-${width}s%*s ] %s" "${curColor}${curIcon}${NORMAL} ${curColor}${curType}${NORMAL} "
   else
-    width=$(( ${LOGGA_LEVELLENGTH} + ${#curColor} + ${#NORMAL} ))
+    width=$(( ${LOGGA_LEVEL_LENGTH} + ${#curColor} + ${#NORMAL} ))
     # Logga::Output "ToConsole :: width : ${width}"
     printf -v typeStyled "[ %-${width}s%*s ] %s" "${curColor}${curType}${NORMAL} "
   fi
@@ -268,7 +267,7 @@ Logga::ToConsole() {
 
 Logga::ToLogFile() {
   local logDate="$(date "${SCRIPT_LOG_FORMAT}")"
-  printf -v typeStyled "[ %-${LOGGA_LEVELLENGTH}s%*s ]" "${curType}"
+  printf -v typeStyled "[ %-${LOGGA_LEVEL_LENGTH}s%*s ]" "${curType}"
 
   local logOutput="${logDate} ${typeStyled} ${logMsg}"
 
@@ -326,8 +325,8 @@ Logga::Line() {
 
   # [ $# -lt 2 ] && Logga::Fatal 'Missing required argument to Logga::Line'
   
-  Logga::Output "Line :: termHeight : ${termHeight}"
-  Logga::Output "Line :: termWidth : ${termWidth}"
+  Logga::Output "Line :: termHeight : ${LOGGA_TERM_HEIGHT}"
+  Logga::Output "Line :: termWidth : ${LOGGA_TERM_WIDTH}"
 
   # # Write specified log level data to logfile
   # case "${LOGLEVEL:-ERROR}" in
@@ -350,7 +349,7 @@ Logga::Line() {
 
 Logga::_Center() {
   local str="${1}"
-  local width="${2:-$termWidth}"
+  local width="${2:-$LOGGA_TERM_WIDTH}"
   local calc1="$(( ( ${width} - 2 - ${#str} ) / 2 ))"
   local calc2="$(( ( ${width} - 1 - ${#str} ) / 2 ))"
 
@@ -360,7 +359,7 @@ Logga::_Center() {
 
 Logga::_Left() {
   local str="${1}"
-  local width="${2:-$termWidth}"
+  local width="${2:-$LOGGA_TERM_WIDTH}"
   local calc1="$(( ( ${width} - 1 - ${#str} ) ))"
   printf -v alignLeft '%s %*.*s' "${str}" 0 "${calc1}" "${LOGGA_PADDING}"
   Logga::Output "${alignLeft}"
@@ -368,7 +367,7 @@ Logga::_Left() {
 
 Logga::_Right() {
   local str="${1}"
-  local width="${2:-$termWidth}"
+  local width="${2:-$LOGGA_TERM_WIDTH}"
   local calc2="$(( ( ${width} - 1 - ${#str} ) ))"
   printf -v alignRight '%*.*s %s' 0 "$calc2" "${LOGGA_PADDING}" "${str}"
   Logga::Output "${alignRight}"
