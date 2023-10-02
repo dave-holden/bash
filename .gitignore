@@ -400,3 +400,8 @@ dist
 
 # MacOs
 .DS_Store
+
+# Logga
+*.access..log
+*.error..log
+*.comined..log
