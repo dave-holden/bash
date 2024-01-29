@@ -1,6 +1,6 @@
 
-if [ -f ~/.bash_aliases ]; then
-  . ~/.bash_aliases
+if [ -f ~/.aliases_common ]; then
+  . ~/.aliases_common
 fi
 
 # don't put duplicate lines in the history. See bash(1) for more options

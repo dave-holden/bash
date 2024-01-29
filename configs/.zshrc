@@ -9,7 +9,14 @@ fi
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 
 # Path to your oh-my-zsh installation.
+# Path to your oh-my-zsh installation.
+if [[ -z "$HOME/.oh-my-zsh" ]]; then
+echo "FOUND OMZ"
 export ZSH="$HOME/.oh-my-zsh"
+else
+echo "NOT FOUND OMZ"
+fi
+
 
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zsh is loaded, in which case,
@@ -50,7 +57,7 @@ zstyle ':omz:update' frequency 7
 # DISABLE_AUTO_TITLE="true"
 
 # Uncomment the following line to enable command auto-correction.
-# ENABLE_CORRECTION="true"
+ENABLE_CORRECTION="true"
 
 # Uncomment the following line to display red dots whilst waiting for completion.
 # You can also set it to another string to have that shown instead of the default red dots.
@@ -70,6 +77,7 @@ zstyle ':omz:update' frequency 7
 # or set a custom format using the strftime function format specifications,
 # see 'man strftime' for details.
 # HIST_STAMPS="mm/dd/yyyy"
+HIST_STAMPS="yyyy-mm-dd"
 
 # Would you like to use another custom folder than $ZSH/custom?
 # ZSH_CUSTOM=/path/to/new-custom-folder
@@ -89,14 +97,23 @@ plugins=(
   zsh-syntax-highlighting
   )
 
+# Path to your oh-my-zsh installation.
+if [[ -z "$HOME/.oh-my-zsh" ]]; then
+echo "FOUND OMZ"
 source $ZSH/oh-my-zsh.sh
+else
+echo "NOT FOUND OMZ"
+fi
+
+
 
 # User configuration
 
 # export MANPATH="/usr/local/man:$MANPATH"
 
 # You may need to manually set your language environment
-# export LANG=en_US.UTF-8
+# export LANG=en_GB.UTF-8
+# export TERM="xterm-256color"
 
 # Preferred editor for local and remote sessions
 # if [[ -n $SSH_CONNECTION ]]; then
@@ -116,6 +133,10 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
+alias ls="lsd --group-directories-first"
+alias ll='lsd -l --group-directories-first'
+alias la='lsd -la --group-directories-first'
+alias tree='lsd -l --group-directories-first --tree --depth=2'
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh

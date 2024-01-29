@@ -28,8 +28,8 @@
 # path=(~/.local/bin $path)
 # export PATH
 
-if [ -f ~/.bash_aliases ]; then
-  . ~/.bash_aliases
+if [ -f ~/.aliases_common ]; then
+  . ~/.aliases_common
 fi
 
 # zsh_colors() {

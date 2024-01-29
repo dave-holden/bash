@@ -192,6 +192,8 @@ alias l='ls -CF'
   alias gSu='git submodule update --remote --recursive'
   alias gSx='git-submodule-remove'
 
+  alias gsmc='git submodule foreach --recursive git checkout .'
+
   # Tag (t)
   alias gt='git tag'
   alias gtl='git tag --list'
