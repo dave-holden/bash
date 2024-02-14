@@ -88,11 +88,11 @@ HIST_STAMPS="yyyy-mm-dd"
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
-  colored-man-pages 
-  colorize 
-  command-not-found 
+  colored-man-pages
+  colorize
+  command-not-found
   git
-  gitignore 
+  gitignore
   zsh-autosuggestions
   zsh-syntax-highlighting
   )
@@ -104,8 +104,6 @@ source $ZSH/oh-my-zsh.sh
 else
 echo "NOT FOUND OMZ"
 fi
-
-
 
 # User configuration
 

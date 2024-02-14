@@ -10,7 +10,7 @@ if [ -n TPUT_FOUND ]; then
   TERM_ROWS=$(tput lines)          # Number of lines in the terminal
   TERM_COLS=$(tput cols)            # Number of columns in the terminal
 else
-  # Else, set defaults 
+  # Else, set defaults
   NUM_COLORS=0
   TERM_ROWS=0
   TERM_COLS=0
@@ -51,7 +51,7 @@ fi
     FG_MAGENTA=''                   MAGENTA=$FG_MAGENTA;
     FG_CYAN=''                      CYAN=$FG_CYAN;
     FG_WHITE=''                     WHITE=$FG_WHITE;
-    
+
     # Define default background colours
     BG_BLACK=''
     BG_RED=''
@@ -93,25 +93,25 @@ fi
   fi
 # }
 
-COLORS=( 
+COLORS=(
   # Foreground colour names
-  "RED" "GREEN" "YELLOW" "BLUE" "MAGENTA" "CYAN" "WHITE"  
+  "RED" "GREEN" "YELLOW" "BLUE" "MAGENTA" "CYAN" "WHITE"
 
   # Foreground colour names - to avoid possible conflict
-  "FG_RED" "FG_GREEN" "FG_YELLOW" "FG_BLUE" "FG_MAGENTA" 
-  "FG_CYAN" "FG_WHITE" 
+  "FG_RED" "FG_GREEN" "FG_YELLOW" "FG_BLUE" "FG_MAGENTA"
+  "FG_CYAN" "FG_WHITE"
 
   # Background colour names
-  "BG_RED" "BG_GREEN" "BG_YELLOW" "BG_BLUE" "BG_MAGENTA" 
+  "BG_RED" "BG_GREEN" "BG_YELLOW" "BG_BLUE" "BG_MAGENTA"
   "BG_CYAN" "BG_WHITE"
 )
 
 FORMATS=(
   # Style names
-  "BOLD" "DIM" "ITALICS" "UNDERLINE" "BLINK" "INVERT" 
+  "BOLD" "DIM" "ITALICS" "UNDERLINE" "BLINK" "INVERT"
   "INVISIBLE"
   # Alternative Style names - to avoid possible conflict
-  "TXT_BOLD" "TXT_DIM" "TXT_ITALICS" "TXT_UNDERLINE" 
+  "TXT_BOLD" "TXT_DIM" "TXT_ITALICS" "TXT_UNDERLINE"
   "TXT_BLINK" "TXT_INVERT" "TXT_INVISIBLE"
 )
 
@@ -148,7 +148,7 @@ INVISIBLE() { printf "%s\\n" "${TXT_INVISIBLE}${1}${TXT_RESET}"; }
 foutput() {
   # return string formatted according to COLORS / STYLES passed in
   # Usage :
-  #   
+  #
   declare -a text
   declare messages styles
 
@@ -216,7 +216,7 @@ echo_var() {
 }
 
 # (return 0 2>/dev/null) && {
-#     echo "COLOURS IS SOURCED"; 
-#     colors; 
+#     echo "COLOURS IS SOURCED";
+#     colors;
 #     text_formats
 # } || echo "COLOURS NOT SOURCED"
