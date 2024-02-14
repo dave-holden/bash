@@ -1,9 +1,7 @@
 #!/bin/zsh
 
-# source ./Script/helpers/diag/diag.bash
-
 # SCRIPT[AUTHOR]="ᗪ闩ᐯ🝗 廾ㄖ㇄ᗪ🝗𝓝"
-# SCRIPT[DESCRIPTION]="Bash template for bash/shell scripts"
+# SCRIPT[DESCRIPTION]="Script vars forshell"
 # SCRIPT[REPO_URL]="https://raw.githubusercontent.com/dave-holden/bash/main/template.sh"
 
 SCRIPT_FILE_BASE="$(basename "${0}" )"
