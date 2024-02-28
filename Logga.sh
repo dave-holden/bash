@@ -29,6 +29,8 @@ Logga() {
     [VERBOSE]=6
     [DIAG]=7
     [DEBUG]=9
+    [SILENT]=10
+    [TOFILE]=11
   )
   LOGGA_ORDER=(
     FATAL
@@ -40,6 +42,8 @@ Logga() {
     VERBOSE
     DIAG
     DEBUG
+    SILENT
+    TOFILE
   )
   LOGGA_COLORS=(
     [FATAL]="${BOLD}${UNDERLINE}${RED}"
@@ -51,6 +55,8 @@ Logga() {
     [VERBOSE]="${MAGENTA}"
     [DIAG]="${MAGENTA}"
     [DEBUG]="${BOLD}${MAGENTA}"
+    [SILENT]=""
+    [TOFILE]=""
   )
   LOGGA_ICONS=(
     [FATAL]="✘"
@@ -62,6 +68,8 @@ Logga() {
     [VERBOSE]="❋"
     [DIAG]="🔍"
     [DEBUG]="🪓"
+    [SILENT]="🤫"
+    [TOFILE]=""
   )
   # shellcheck disable=SC2034
   LOGGA_ICONS_ALT=(
@@ -74,6 +82,8 @@ Logga() {
     [VERBOSE]="📚"
     [DIAG]="🔍"
     [DEBUG]="🪓"
+    [SILENT]="🤔"
+    [TOFILE]="📎"
   )
   LOGGA_SIGNALS=(
     # EXIT
@@ -208,7 +218,7 @@ Logga::TearDown() {
   Logga::Debug "^"
 
   # Logga::Output "Logga::TearDown : LOGGA_SIGNALS :${LOGGA_SIGNALS[*]}"
-  Logga::Debugt
+  Logga::Debug
   declare -a params=( "${@}" )
   Logga::Debug "Logga::TearDown : params :: ${#@} -> ${params[*]}"
 
@@ -329,9 +339,31 @@ Logga::FolderExists() {
 
   [ -d "${1}" ]
 }
+Logga::FolderIsEmpty() {
+  # Logga::Output "Logga::FolderIsEmpty"
+  Logga::RequiredArgs "1" "${#}" "${*}"
+
+  # if [ "$(find "${targetPathName}" -mindepth 1 -maxdepth 1 | wc -l)" -eq 0 ]; then
+  #     echo "Directory is empty" >&3
+  # else
+  #     echo "Directory is not empty" >&3
+  # fi
+  # [ "$(find "${1}" -mindepth 1 -maxdepth 1 | wc -l)" -eq 0 ] && Logga::Output "EMPTY" || Logga::Output "FULL"
+  # [ "$(find "${1}" -mindepth 1 -maxdepth 1 | wc -l)" ]
+  [ "$(find "${1}" -mindepth 1 -maxdepth 1 | wc -l)" -eq 0 ]
+  # "$(find "${1}" -mindepth 1 -maxdepth 1 | wc -l)" -eq 0
+}
 Logga::GetRepoName() {
   Logga::RequiredArgs "1" "${#}" "${*}"
   basename "${1}" ".git"
+}
+Logga::Silent() {
+  Logga::Log SILENT "${@}"
+}
+Logga::ToFile() {
+  type="${1:-TOFILE}"
+  shift
+  Logga::Log ${type} "${@}"
 }
 Logga::Fatal() {
   Logga::Log Fatal "${@}"
@@ -369,14 +401,16 @@ Logga::Debug() {
 Logga::Log() {
   Logga::RequiredArgs "2" "${#}" "${@}"
 
-  local passedType=$1
-  local logMsg=$2
+  local passedType="${1}"
+  local logMsg="${2}"
+  local customType="${3}"
 
   local curLevel curType logLevel
 
   logLevel="${LOGGA_LEVELS[${LOGGA_LEVEL}]}"
   curType=$( echo "${passedType}" | tr '[:lower:]' '[:upper:]' )
   curLevel="${LOGGA_LEVELS[${curType}]}"
+
   if [ "${curLevel}" -le "${logLevel}" ]; then
     Logga::ToConsole "${logMsg}"
   elif [ "${curLevel}" -eq ${LOGGA_LEVELS[DIAG]} ] && [ "${LOGGA_IS_DIAG}" = "true" ]; then
@@ -467,8 +501,10 @@ Logga::ExecCmd() {
       respMsg="$( eval "${*}" > /dev/null 2>&1 )"
       respCode="${?}"
 
-      if [ "${#respCode}" -ne 0 ] ; then
-        echo "${respMsg}" >&2
+      if [ "${respCode}" -ne "0" ] ; then
+        # echo "${respMsg}" >&2
+        # Logga::ToFile "${respMsg}"
+        Logga::Error "respMsg :: ${respMsg}"
         return "${respCode}"
       fi
     fi
@@ -484,54 +520,11 @@ Logga::Join() {
   printf -v out "${sep//%/%%}%s" "$@"
 	echo "${out#$sep}"
 }
-Logga::ExecuteX() {
-  all="${*}"
-
-  local cmd="${1}";
-  shift
-  options="${*}"
-
-  errormessage=$( eval "${cmd} ${options}" 2>&1 $var > /dev/null )
-
-  result="${?}"
-}
-Logga::RepoExistsX() {
-  all="${*}"
-
-  local cmd="${1}";
-  shift
-  options="${*}"
-
-  errCode=$( Logga::CmdExists "${cmd}" )
-
-  if [ "${errCode}" -eq "0" ] ; then
-
-    if [ $LOGGA_IS_DRYRUN = "true" ]; then
-
-      Logga::Info "Dryrun command: ${cmd} ${options}"
-
-    else
-
-      errorMessage=$(curl -s -w '%{http_code}' "${all}" -o /dev/null )
-      result="${?}"
-
-      [ "${result}" -eq 0 ] && Logga::Output "Logga::RepoExists : Result Is Zero" || Logga::Output "Logga::RepoExists : Result Is NOT Zero"
-
-      if [ ${errorMessage} -eq 200 ]; then
-        Logga::Output $errorMessage
-      else
-        Logga::Output "${errormessage}"
-      fi
-    fi
-  else
-    errMsg="$( Logga::ErrorMessage $errCode )"
-    Logga::Fatal "${errMsg} : '$cmd'"
-  fi
-}
 
 Logga::MaxLevelNameLength() {
   printf "%s\n" "${LOGGA_ORDER[@]}" | wc -L
 }
+
 # Spinners
 Logga::CursorBack() {
   printf -v msg '%b' "\033[${1:-1}D" # move the cursor back $1 places, default 1
@@ -551,6 +544,30 @@ Logga::ClearLine() {
   printf -v msg '%b' "\033[1A\33[K"
   # printf -v msg '%b%b' "\033[1A" "\33[2K"
   Logga::Terminal "${msg}"
+}
+Logga::PositionLeft() {
+  tput hpa 0  >&3
+  # clear to end of line
+  # tput el &> $(tty)
+  tput el >&3
+}
+Logga::ResetLine() {
+  # tput hpa 0 &> $(tty)
+  tput hpa 0  >&3
+  # clear to end of line
+  # tput el &> $(tty)
+  tput el >&3
+  Logga::Terminal "${*}"
+}
+Logga::ClearScreen() {
+  Logga::Output "Logga::ClearScreen"
+  # \033 stands for ESC (ANSI value 27).
+  # ESC [ is a kind of escape sequence called Control Sequence Introducer (CSI).
+  # CSI commands starts with ESC[ followed by zero or more parameters.
+  # \033[H (ie, ESC[H) and \033[J are CSI codes.
+  # \033[H moves the cursor to the top left corner of the screen (ie, the first column of the first row in the screen).
+  # and
+  # \033[J clears the part of the screen from the cursor to the end of the screen.
 }
 Logga::SlashSpinner() {
   # Logga::Terminal "Logga::SlashSpinner"
@@ -578,28 +595,37 @@ Logga::SlashSpinner() {
 Logga::GridSpinner() {
   # trap stop_spinner SIGINT SIGTERM ERR EXIT
   # Logga::Display "Logga::GridSpinner :: ${1} --- ${2} << ${!}"
-  Logga::Terminal "Logga::GridSpinner"
+  # Logga::Terminal "Logga::GridSpinner"
   local PID=$!
   local x=0
   local spin='⣾⣽⣻⢿⡿⣟⣯⣷'
   # local msg="${}"
-  startMsg="${1:-Running... }"
-  endMsg="${2:-Done!}"
+  # startMsg="${1:-Running... }"
+  # endMsg="${2:-Done!}"
+  startMsg="${1}"
+  endMsg="${2}"
 
   Logga::HideCursor
   Logga::Print "${startMsg}"
-
   while kill -0 $PID 2>/dev/null; do
     local x=$(((x + 3) % ${#spin}))
-    Logga::Print "${spin:$x:3}"
+    # thing="${spin:$x:3}"
+    output="${YELLOW}${spin:$x:3}${NORMAL}"
+    # Logga::Print "${spin:$x:3}"
+    # Logga::Print "${YELLOW}${spin:$x:3}${NORMAL}"
+    length=$(( "${#output} + ${#startMsg}" + "1"))
+    # Logga::Output "calc :: ${#output} + ${#startMsg} = ${length} - ${output}"
+    Logga::Print "${output}"
     Logga::CursorBack 1
+    # Logga::CursorBack "${length}"
+    # Logga::PositionLeft
     sleep .1
   done
 
   Logga::ShowCursor
   Logga::Output "${endMsg}"
   # sleep  &
-  # Logga::ClearLine
+  Logga::ClearLine
 
   wait $PID # capture exit code
   return $?
@@ -648,15 +674,17 @@ Logga::Display() {
 Logga::Terminal() {
   # Output text var to respsecitve File Descriptor
 
-  if [[ -t "3" || -p /dev/stdin ]] ; then
-    printf '%s' "${*}" >&3
-  else
-    printf '%s' "${*}"
-  fi
+  # if [[ -t "3" || -p /dev/stdin ]] ; then
+  #   printf '%s' "${*}" >&3
+  # else
+  #   printf '%s' "${*}"
+  # fi
+  printf '%s' "${*}" >&$(tty)
 }
 Logga::Print() {
   # determine if a "format" parameter was passed in or not
   # generate the text var
+  # echo "MAIN" >&$(tty)
   if [ "${#}" -ge "2" ]; then
     format="${1}"
     shift
@@ -715,3 +743,56 @@ Logga::RestoreOutput() {
 #   local sourceURL="${1}";
 #   local targetFolder="${2}"
 # }
+
+# Logga::ReadKey() {
+#     read -t5 -n1 -r -p 'Press any key or wait five seconds...' key
+#     if [ "$?" -eq "0" ]; then
+#         echo 'A key was pressed.'
+#     else
+#         echo 'Five seconds passed. Continuing...'
+#     fi
+# }
+Logga::ExecuteX() {
+  all="${*}"
+
+  local cmd="${1}";
+  shift
+  options="${*}"
+
+  errormessage=$( eval "${cmd} ${options}" 2>&1 $var > /dev/null )
+
+  result="${?}"
+}
+Logga::RepoExistsX() {
+  all="${*}"
+
+  local cmd="${1}";
+  shift
+  options="${*}"
+
+  errCode=$( Logga::CmdExists "${cmd}" )
+
+  if [ "${errCode}" -eq "0" ] ; then
+
+    if [ $LOGGA_IS_DRYRUN = "true" ]; then
+
+      Logga::Info "Dryrun command: ${cmd} ${options}"
+
+    else
+
+      errorMessage=$(curl -s -w '%{http_code}' "${all}" -o /dev/null )
+      result="${?}"
+
+      [ "${result}" -eq 0 ] && Logga::Output "Logga::RepoExists : Result Is Zero" || Logga::Output "Logga::RepoExists : Result Is NOT Zero"
+
+      if [ ${errorMessage} -eq 200 ]; then
+        Logga::Output $errorMessage
+      else
+        Logga::Output "${errormessage}"
+      fi
+    fi
+  else
+    errMsg="$( Logga::ErrorMessage $errCode )"
+    Logga::Fatal "${errMsg} : '$cmd'"
+  fi
+}
