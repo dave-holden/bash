@@ -4,6 +4,7 @@
 
 Logga() {
 
+  LOGGA_NEWLINE="\n"
   # Initialize Logga
   LOGGA_IS_DEBUG="${DEBUG:-false}"
   LOGGA_IS_DIAG="${DIAG:-false}"
@@ -13,6 +14,8 @@ Logga() {
   # Find the rows and columns
   LOGGA_TERM_WIDTH="$( tput cols )"
   LOGGA_TERM_HEIGHT="$( tput lines )"
+
+  LOGGA_PAGE_WIDTH="${1:-80}"
 
   declare -gA LOGGA_LEVELS LOGGA_COLORS LOGGA_ICONS LOGGA_ICONS_ALT
 
@@ -86,18 +89,17 @@ Logga() {
     [TOFILE]="📎"
   )
   LOGGA_SIGNALS=(
-    # EXIT
+    EXIT
     ERR
     HUP
     INT
     QUIT
     ABRT
     KILL
-    ALRM
+    # ALRM
     # TERM
   )
-
-  LOGGA_ERROR_CODES=(
+  LOGGA_ERROR_CODESx=(
     [1]="Catchall for general errors"
     [2]="Misuse of shell builtins"
     [126]="Cannot execute command"
@@ -107,15 +109,27 @@ Logga() {
     # 130	Bash script terminated by Control-C
     # 255*	Exit status out of range
   )
+  LOGGA_ERROR_CODES=(
+    # https://itsfoss.com/linux-exit-codes/
+    [0]="Command executed with no errors"
+    [1]="Catchall for general errors"
+    [2]="Incorrect command (or argument) usage"
+    [126]="Permission denied (or) unable to execute"
+    [127]="Command not found, or PATH error"
+    [128]="Invalid argument to exit command"
+    # [128+n]="Fatal error signal 'n'"
+    [130]="Termination by Ctrl+C or SIGINT"
+    [137]="The SIGKILL signal kills the process instantly"
+    [143]="SIGTERM a process is killed without specifying arguments"
+    # 130	Bash script terminated by Control-C
+
+  # 255*	Exit status out of range
+  )
   Logga::Setup
 }
 
 Logga::Setup() {
   # Setup vars, traps, screen
-  Logga::Diag "Starting Logga::Setup"
-
-  Logga::FlushLogFile
-
   shopt -s extglob
 
   if [ "${LOGGA_IS_DEBUG}" = true ]; then
@@ -128,13 +142,22 @@ Logga::Setup() {
   # # Trap errors in subshells and functions
   set -E  # -o errtrace   # Causes shell functions to inherit the ERR trap.
   set -T  # -o functrace  # Causes shell functions to inherit the DEBUG trap.
+  set -u  # -o nounset    # Treats unset or undefined variables as an error when substituting
+                          # (during parameter expansion). Does not apply to special parameters
+                          # such as wildcard **`*`** or **`@`**.                                                                 |
 
   ## The return value of a pipeline is the status of the last command that had a non-zero status upon exit.
   ## If no command had a non-zero status upon exit, the value is zero.                                                                  |
   # # Use last non-zero exit code in a pipeline
   set -o pipefail
 
-  Logga::enableTraps 'Logga::TearDown "${LINENO}" "${BASH_LINENO}" "${BASH_COMMAND}" "${FUNCNAME[*]}" "${0}" "${BASH_SOURCE[0]}" "${?}"' "${LOGGA_SIGNALS[@]}"
+  set -Eeuo pipefail
+
+  Logga::EnableTraps 'Logga::ErrorHandler'
+
+  Logga::Diag "Starting Logga::Setup"
+
+  Logga::FlushLogFile
 
   if [ "${LOGGA_FILE_LOGGING}" = true ]; then
     Logga::Diag "Logging To File Enabled - Info"
@@ -142,9 +165,10 @@ Logga::Setup() {
     Logga::Diag "Logging To File Disabled - Info"
   fi
 
-  trap '[ "$?" -eq 0 ] || Logga::Output "EXITED :: ${0}"' EXIT
+  LOGGA_REDIRECT_OUTPUT="${REDIRECT_OUTPUT:-false}"
+  # echo "LOGGA_REDIRECT_OUTPUT :: ${LOGGA_REDIRECT_OUTPUT}" >& $( tty )
 
-  Logga::RedirectOutput true
+  Logga::RedirectOutput "${LOGGA_REDIRECT_OUTPUT}"
 
   if [ "${LOGGA_IS_DIAG}" = true ] ; then
     # [ "${LOGGA_IS_DEBUG}" = true ] && Logga::Diag "Starting \"${SCRIPT_FILE_BASE}\""
@@ -154,141 +178,70 @@ Logga::Setup() {
   fi
 }
 
-Logga::ErrorMessage() {
-  local errCode=$1
-  local desc="${LOGGA_ERROR_CODES[$errCode]}"
-  echo "${desc}"
+Logga::GetErrorMessage() {
+  errorCode="${1}"
+  local errorDesc="${LOGGA_ERROR_CODES[${errorCode}]}"
+  echo "${errorDesc}"
 }
-Logga::CheckErrors() {
-  errCde="${1}"
-  errMsg="${2}"
-  errCde="${LOGGA_ERROR_CODES[${1}]}"
-  Logga::Debug "Logga::CheckErrors :: respCode : ${respCode}"
-  Logga::Debug "Logga::CheckErrors :: respMsg  : ${respMsg}"
-  Logga::Debug "Logga::CheckErrors :: errCde : ${errCde}"
-  # Logga::Output "Logga::CheckErrors :: $ 0 :LINENO: $0"    # $ 0 :: Display
-  # Logga::Output "Logga::CheckErrors :: $ 1 :BASH_LINENO: $1"    # $ 0 :: Display
-  # Logga::Output "Logga::CheckErrors :: $ 2 :BASH_COMMAND: $2"    # $ 0 :: Display
-  # Logga::Output "Logga::CheckErrors :: $ 3 :FUNCNAME: $3"    # $ 0 :: Display
-  # Logga::Output "Logga::CheckErrors :: $ 4 :ZERO: $4"    # $ 0 :: Display
-  # Logga::Output "Logga::CheckErrors :: $ 5 :BASH_SOURCE: $5"    # $ 0 :: Display
-  # Logga::Output "Logga::CheckErrors :: $ 6 : $6"    # $ 0 :: Display
-  Logga::Debug "Logga::CheckErrors :: $ F0 : ${FUNCNAME[0]}"
-  Logga::Debug "Logga::CheckErrors :: $ F1 : ${FUNCNAME[1]}"
-  Logga::Debug "Logga::CheckErrors :: $ F2 : ${FUNCNAME[2]}"
-  Logga::Debug "Logga::CheckErrors :: $ L0 : ${LINENO[0]}"
-  Logga::Debug "Logga::CheckErrors :: $ L1 : ${LINENO[1]}"
-  Logga::Debug "Logga::CheckErrors :: $ L2 : ${LINENO[2]}"
-  Logga::Debug "Logga::CheckErrors :: $ B0 : ${BASH_LINENO[0]}"
-  Logga::Debug "Logga::CheckErrors :: $ B1 : ${BASH_LINENO[1]}"
-  Logga::Debug "Logga::CheckErrors :: $ B2 : ${BASH_LINENO[2]}"
-  Logga::Debug "Logga::CheckErrors :2: errCde : ${errCde}" >&2
+Logga::ErrorHandler() {
+  # file_name="${0}"
+  signal="${1}"
+  status="${2}"
+  Logga::Print "%-20s %s\n" "status" ":: ${status}"
+  Logga::Output "Logga::ErrorHandler : 0 : ${status} - STATUS"
+  error_msg=$( Logga::GetErrorMessage "${status}" )
+  line_no="${3}"
+  bash_line_no="${4}"
+  command="${5}"
+  function_name="${6}"
+  source_file="${7}"
+  file="${8}"
+  Logga::Print "%-20s %s\n" "error_msg :: ${error_msg}"
+  Logga::Print "%-20s %s\n" "line_no" ":: ${line_no}"
+  Logga::Print "%-20s %s\n" "bash_line_no" ":: ${bash_line_no}"
+  Logga::Print "%-20s %s\n" "command" ":: ${command}"
+  Logga::Print "%-20s %s\n" "function_name" ":: ${function_name}"
+  Logga::Print "%-20s %s\n" "source_file" ":: ${source_file}"
+  Logga::Print "%-20s %s\n" "file" ":: ${file}"
+  Logga::Output ""
+  Logga::Output "Logga::ErrorHandler : 0 : ${0} - FILE"
 
-  if [ "${1}" -ne "0" ]; then
-    Logga::Warning "Logga::CheckErrors :: ${2}"
-  fi
+  Logga::Output "Logga::ErrorHandler : 1 : ${1} - SIGNAL CODE"
+  Logga::Output "Logga::ErrorHandler : 2 : ${2} - EXIT CODE"
+  Logga::Output "Logga::ErrorHandler : 3 : ${3} - LINENO[*] - The line number in the script or shell function currently executing"
+  Logga::Output "Logga::ErrorHandler : 4 : ${4} - BASH_LINENO - is the line number in the source file"
+  Logga::Output "Logga::ErrorHandler : 5 : ${5} - BASH_COMMAND - command currently being executed or about to be executed, unless the shell is executing a command as the result of a trap"
+  Logga::Output "Logga::ErrorHandler : 6 : ${6} - FUNCNAME[*] - array variable containing the names of all shell functions currently in the execution call stack"
+  Logga::Output "Logga::ErrorHandler : 7 : ${7} - BASH_SOURCE - source filenames where"
+  Logga::Output "Logga::ErrorHandler : 8 : ${8} - FILE"
+
+  Logga::DisableTraps
 }
 
-Logga::enableTraps() {
+Logga::EnableTraps() {
   # Enable errtrace or the error trap handler will not work as expected
   set -o errtrace   # Ensure the error trap handler is inherited
-  func="${1}";
-  shift
-  # assign all traps
-  for sig in "${@}"; do
-    LOGGA_SIGNALS+=( "${sig}" )
-    trap '${func} ${sig}' "${sig}"
+
+  params='${?} ${LINENO[*]} ${BASH_LINENO} ${BASH_COMMAND} ${FUNCNAME[*]} ${BASH_SOURCE[0]} ${0}'
+
+  func="${1}"
+
+  for signal in "${LOGGA_SIGNALS[@]}"; do
+    trap "${func} ${signal} ${params}" "${signal}"
   done
 }
-Logga::disableTraps() {
+Logga::DisableTraps() {
+  # echo "Logga::DisableTraps :: " >& $( tty )
+
   # Disable errtrace
   set +o errtrace
-  func="${1}";
-  shift
-  # remove all traps
-  for sig in "${@}"; do
-    LOGGA_SIGNALS+=( "${sig}" )
+
+  for sig in "${LOGGA_SIGNALS[@]}"; do
+    # echo "Logga::DisableTraps :: sig : ${sig}" >& $( tty )
     trap - "${sig}"
   done
 }
-Logga::TearDown() {
-  # return 0
-  # Logga::disableTraps EXIT ERR HUP INT QUIT ABRT KILL ALRM TERM
-  Logga::Debug - "${LOGGA_SIGNALS[@]}"
-  Logga::Debug "^"
 
-  # Logga::Output "Logga::TearDown : LOGGA_SIGNALS :${LOGGA_SIGNALS[*]}"
-  Logga::Debug
-  declare -a params=( "${@}" )
-  Logga::Debug "Logga::TearDown : params :: ${#@} -> ${params[*]}"
-
-  Logga::Debug
-  sig="${params[-1]}"
-  Logga::Debug "Logga::TearDown : sig :: ${#sig} -> >${sig}<"
-
-  signal="${LOGGA_SIGNALS[${sig}]}"
-  Logga::Debug "Logga::TearDown : signal :: ${#signal} -> ${signal}"
-  Logga::Debug
-
-  # Logga::Output "all :: ${all}"
-  # signal="${@[#${all}:-1]}"
-  # Logga::Output "signal :: ${signal}"
-  # declare -a args
-  # args="$@"
-  # declare -a args="${@[@]}"
-  # declare -a args="$@[@]"
-
-  Logga::Debug
-  # declare -a args="${@}"
-
-  # Logga::Output "ARGS :: ${#args} -> ${#args}"
-  # for thing in "${@}"; do
-  # for param in "$@"; do
-  #   Logga::Print '==>%s<==\n' "$param"
-  # done
-  # Logga::Output
-  for thing in "${@}"; do
-    Logga::Debug "Logga::TearDown : thing : args : ${thing}"
-  done
-  Logga::Debug
-  for thing in "$!@"; do
-    Logga::Debug "Logga::TearDown : thing : args : ${thing}"
-  done
-
-  Logga::Debug "Logga::TearDown : $ 0 :LINENO: $0"    # $ 0 :: Display
-  Logga::Debug "Logga::TearDown :  $ 1 :BASH_LINENO: $1"    # $ 0 :: Display
-  Logga::Debug "Logga::TearDown :  $ 2 :BASH_COMMAND: $2"    # $ 0 :: Display
-  Logga::Debug "Logga::TearDown :  $ 3 :FUNCNAME: $3"    # $ 0 :: Display
-  Logga::Debug "Logga::TearDown :  $ 4 :ZERO: $4"    # $ 0 :: Display
-  Logga::Debug "Logga::TearDown :  $ 5 :BASH_SOURCE: $5"    # $ 0 :: Display
-  Logga::Debug "Logga::TearDown :  $ 6 :: $6"    # $ 0 :: Display
-  lineNo="${LINENO}"
-  Logga::Debug "Logga::TearDown :  lineNo : ${lineNo}"
-  bashNo="${BASH_LINENO}"
-  Logga::Debug "Logga::TearDown :  bashNo : ${bashNo}"
-  bashCmd="${BASH_COMMAND}"
-  Logga::Debug "Logga::TearDown :  bashCmd : ${bashCmd}"
-  funcName="${FUNCNAME}"
-  Logga::Debug "Logga::TearDown :  funcName : ${funcName}"
-  thing="${0}"
-  Logga::Debug "Logga::TearDown :  thing : ${thing}"
-  bashSource="${BASH_SOURCE}"
-  Logga::Debug "Logga::TearDown :  bashSource : ${bashSource}"
-  Logga::Debug "Logga::TearDown :  $ F0 : ${FUNCNAME[0]}"
-  Logga::Debug "Logga::TearDown :  $ F1 : ${FUNCNAME[1]}"
-  Logga::Debug "Logga::TearDown :  $ F2 : ${FUNCNAME[2]}"
-  Logga::Debug "Logga::TearDown :  $ L0 : ${LINENO[0]}"
-  Logga::Debug "Logga::TearDown :  $ L1 : ${LINENO[1]}"
-  Logga::Debug "Logga::TearDown :  $ L2 : ${LINENO[2]}"
-  Logga::Debug "Logga::TearDown :  $ B0 : ${BASH_LINENO[0]}"
-  Logga::Debug "Logga::TearDown :  $ B1 : ${BASH_LINENO[1]}"
-  Logga::Debug "Logga::TearDown :  $ B2 : ${BASH_LINENO[2]}"
-
-  [ "${LOGGA_IS_DEBUG}" = true ] && {
-    Logga::Padding "="
-  }
-  # Logga::RestoreOutput
-}
 Logga::RequiredArgs() {
   if [ "$1" -ne "${2}" ] ; then
     Logga::Fatal "\"${FUNCNAME[1]}\" requires ${1} argument(s), but ${2} supplied :- '${3}'";
@@ -440,11 +393,16 @@ Logga::ToConsole() {
     curIcon="${LOGGA_ICONS[${curType}]}"
     width=$(( "${LOGGA_LEVEL_LENGTH}" + (${#curColor} * 2) + (${#NORMAL} * 2) + (${#curIcon} * 2 ) + 2 ))
     printf -v typeStyled "[ %-${width}s%*s ] %s" "${curColor}${curIcon}${NORMAL} ${curColor}${curType}${NORMAL}"
+    Logga::Output "${typeStyled} ${logMsg}"
+  elif [ "${curType}" = "HEADER" ]; then
+    echo "Logga::ToConsole" >& $( tty )
+    Logga::LineCenter "${logMsg}" "#" "#" " "
   else
     width=$(( "${LOGGA_LEVEL_LENGTH}" + "${#curColor}" + "${#NORMAL}" ))
     printf -v typeStyled "[ %-${width}s%*s ] %s" "${curColor}${curType}${NORMAL}"
+    Logga::Output "${typeStyled} ${logMsg}"
   fi
-  Logga::Output "${typeStyled} ${logMsg}"
+
 }
 
 Logga::CmdExists() {
@@ -452,38 +410,26 @@ Logga::CmdExists() {
   defaultValue=127        # Error code for missing command
   found="${defaultValue}"
 
-  # if command -v $cmd >/dev/null 2>&1 ; then
+  if command -v $cmd >/dev/null 2>&1 ; then
   # if command -v -- "$cmd" > /dev/null 2>&1; then
-  #   # found=0
-  #   echo "0"
-  #   return
-  # fi
-
-  if type -- $cmd > /dev/null 2>&1 ; then
-  # Logga::Output "COMMAND NOT FOUND"
     # found=0
     echo "0"
     return
-  # else
-    # Logga::Output "COMMAND NOT FOUND"
   fi
-
-  # if hash "${cmd}" > /dev/null 2>&1 ; then
-  #   # found=0
-  #   echo "0"
-  #   return
-  # fi
-
-  # if typeset -f "${cmd}" > /dev/null 2>&1 ; then
-  #   # found=0
-  #   echo "0"
-  #   return
-  # fi
 
   echo "${found}"
 }
-Logga::ServiceExists() {
-  printf "ServiceExists"
+Logga::TestError() {
+  Logga::Output "Logga::TestError"
+  # thing=$( echo (( 0 / 1 )) )
+  thing=$( (( 0 / 1 )) )
+  err="${?}"
+  Logga::Output "Logga::TestError :: thing : ${thing}"
+  Logga::Output "Logga::TestError :: err : ${err}"
+  result=$(( 0 / 1))
+  Logga::Output "Logga::TestError :: result :1: ${result}"
+  result=$(( 1 / 0 ))
+  Logga::Output "Logga::TestError :: result :2: ${result}"
 }
 Logga::ExecCmd() {
   local cmd="${1}";
@@ -505,11 +451,12 @@ Logga::ExecCmd() {
         # echo "${respMsg}" >&2
         # Logga::ToFile "${respMsg}"
         Logga::Error "respMsg :: ${respMsg}"
+        echo "${respMsg}"
         return "${respCode}"
       fi
     fi
   else
-    errMsg="$( Logga::ErrorMessage $errCode )"
+    errMsg="$( Logga::GetErrorMessage $errCode )"
     Logga::Fatal "${errMsg} : '$cmd'"
     return 1
   fi
@@ -546,27 +493,34 @@ Logga::ClearLine() {
   Logga::Terminal "${msg}"
 }
 Logga::PositionLeft() {
-  tput hpa 0  >&3
+  # tput hpa 0  >&3
+  tput hpa 0 &> $(tty)
   # clear to end of line
-  # tput el &> $(tty)
-  tput el >&3
+  tput el &> $(tty)
+  # tput el >&3
 }
 Logga::ResetLine() {
-  # tput hpa 0 &> $(tty)
-  tput hpa 0  >&3
+  tput hpa 0 &> $(tty)
+  # tput hpa 0  >&3
   # clear to end of line
-  # tput el &> $(tty)
-  tput el >&3
+  tput el &> $(tty)
+  # tput el >&3
   Logga::Terminal "${*}"
 }
 Logga::ClearScreen() {
   Logga::Output "Logga::ClearScreen"
   # \033 stands for ESC (ANSI value 27).
+
   # ESC [ is a kind of escape sequence called Control Sequence Introducer (CSI).
+
   # CSI commands starts with ESC[ followed by zero or more parameters.
+
   # \033[H (ie, ESC[H) and \033[J are CSI codes.
+
   # \033[H moves the cursor to the top left corner of the screen (ie, the first column of the first row in the screen).
+
   # and
+
   # \033[J clears the part of the screen from the cursor to the end of the screen.
 }
 Logga::SlashSpinner() {
@@ -594,7 +548,6 @@ Logga::SlashSpinner() {
 }
 Logga::GridSpinner() {
   # trap stop_spinner SIGINT SIGTERM ERR EXIT
-  # Logga::Display "Logga::GridSpinner :: ${1} --- ${2} << ${!}"
   # Logga::Terminal "Logga::GridSpinner"
   local PID=$!
   local x=0
@@ -644,75 +597,139 @@ Logga::MoonSpinner() {
 Logga::ShowSpinner() {
   startMsg="${1:-Starting...}"
   endMsg="${2:-Ended!}"
-  # Logga::Display "Logga::ShowSpinner :: ${1} : ${2} > "
+
   # Logga::SlashSpinner "${1}"
   # Logga::SlashSpinner "${1}" "${2}"
   Logga::GridSpinner "${1}" "${2}"
   # Logga:: "${*}"
 }
 
-# Output
-Logga::Display() {
-  # Seperate 'output' method for testing
-  #  || -p /dev/stdout
-  # determine if a "format" parameter was passed in or not
-  # generate the text var
-  if [ "${#}" -ge "2" ]; then
-    format="${1}"
-    shift
-    printf -v msg "${format}" "${*}"
-  else
-    printf -v msg "${*}"
-  fi
-  # Output text var to respsecitve File Descriptor
-  if [[ -t "3" ]] ; then
-    printf '%s' "${msg}" >&3
-  else
-    printf '%s' "${msg}"
-  fi
-}
-Logga::Terminal() {
-  # Output text var to respsecitve File Descriptor
+Logga::hasTerm() {
+  local terms="$1"
+  shift
 
-  # if [[ -t "3" || -p /dev/stdin ]] ; then
-  #   printf '%s' "${*}" >&3
-  # else
-  #   printf '%s' "${*}"
+  for term in $terms; do
+    for arg; do
+
+      if [[ $arg == "$term" ]]; then
+        # echo "yes"
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
+Logga::Contains() {
+  thing="${1}"
+  value="${2}"
+
+  # str='some text with @ in it'
+  # if [[ $str == *['!'@#\$%^\&*()_+]* ]]
+  # then
+  #   echo "It contains one of those" >& $( tty )
   # fi
-  printf '%s' "${*}" >&$(tty)
+
+  # value=88.90%
+  # thing=*[%]*
+
+  case $value in
+    "${thing}")
+      echo "${value} found in thing ${thing}"
+    ;;
+    *[!%.0123456789]* | *%*%* | *.*.*) ;;
+    ?*%) echo matches >& $( tty ) ;;
+  esac
 }
-Logga::Print() {
-  # determine if a "format" parameter was passed in or not
-  # generate the text var
-  # echo "MAIN" >&$(tty)
-  if [ "${#}" -ge "2" ]; then
-    format="${1}"
-    shift
-    printf -v msg "${format}" "${*}"
-  else
-    printf -v msg '%s' "${*}"
-  fi
-  Logga::Terminal "${msg}"
-}
-Logga::Output() {
+# Output
+Logga::Outputv2() {
   Logga::Print "%s\n" "${*}"
 }
+
+Logga::Print() {
+
+  [[ "${BASHPID}" -eq "${$}" ]] && local in_subshell=false || local in_subshell=true
+  if Logga::hasTerm '-v --verbose' "${@}" ; then
+
+    local flag="${1}"
+    declare -n var_name=$2
+    shift 2
+
+    if [[ "${#@}" -gt "1" && "${*}" == *"%"* ]]; then
+      local format="${1}"
+      shift
+    else
+      local format="%s"
+    fi
+    local string=( "${@}" )
+    printf $flag var_name "${format}" "${string[@]}"
+    # echo "${var_name}"
+  else
+    if [[ "${#@}" -gt "1" && "${*}" == *"%"* ]]; then
+      local format="${1}"
+      shift
+    else
+      local format="%s"
+    fi
+    local string=( "${@}" )
+
+    if "${in_subshell}" ; then
+      printf "${format}" "${string[@]}"
+    else
+      printf "${format}" "${string[@]}" >& "$( tty )"
+    fi
+  fi
+}
+
+Logga::Terminal() {
+  # Output text var to respsecitve File Descriptor
+  # printf '%s' "${*}" >& "$(tty)"
+  Logga::Print "${@}"
+}
+Logga::Output() {
+  Logga::Print "%s\n" "${@}"
+}
+# Formatting
+Logga::Padding() {
+  local char="${1:- }"
+  local length="${2:-${LOGGA_PAGE_WIDTH}}"
+  local start="${3:-1}"
+  local padding
+  printf -v padding -- "%0.s${char}" $(seq $start $length)
+  # Logga::Print "%s\n" "${padding}"
+  # Logga::Terminal "${padding}"
+  # Logga::Output "${padding}"
+  echo "${padding}"
+}
+
+Logga::LineCenter() {
+  echo "Logga::LineCenter" >& $( tty )
+  local msg="${1}"
+  local prefix="${2}"
+  local suffix="${3}"
+  local max_width="${4:-${LOGGA_PAGE_WIDTH}}"
+  local char="${5:- }"
+
+
+  termMsgWidth=$(( "${max_width}" - ( "${#prefix}" + "${#msg}" + "${#suffix}"  ) -4 ))
+  termWidthLeft="$(( ${termMsgWidth} / 2 ))"
+  termWidthRight="$(( ${termMsgWidth} - ${termWidthLeft} ))"
+
+  # totalCalc="$(( ${#prefix} + ${termWidthLeft} + ${#msg} + ${termWidthRight} + ${#suffix} ))"
+
+  termWidthLeftPad=$( Logga::Padding "${char}" "${termWidthLeft}")
+  termWidthRightPad=$( Logga::Padding "${char}" "${termWidthRight}")
+
+  printf -v msg "%s %s %s %s %s\n"  "$prefix" "${termWidthLeftPad}" "${msg}" "${termWidthRightPad}" "${suffix}"
+
+  logga::Terminal "${msg}"
+}
+
 Logga::TestFDs() {
-  Logga::Display "Logga::TestFDs"
+  Logga::Output "Logga::TestFDs"
   for i in {0..5}
   do
     [ -t "${i}" ] && Logga::Display "${i} Open" || Logga::Display "${i} Closed"
-  done
-}
-
-
-# Formatting
-Logga::Padding() {
-  local padChar="${1:- }"
-  local padLen="${2:-${LOGGA_TERM_WIDTH}}"
-
-  for ((i = "${3:-1}" ; i <= "${padLen}" ; i++)); do
-    Logga::Terminal "${padChar}"
   done
 }
 
@@ -735,35 +752,12 @@ Logga::RestoreOutput() {
     stty sane
   fi
 }
-
-# Logga::CloneRepoX() {
-#   all="${*}"
-#   Logga::Output "Logga::CloneRepo :ALL 1 : ${all}"
-
-#   local sourceURL="${1}";
-#   local targetFolder="${2}"
-# }
-
-# Logga::ReadKey() {
-#     read -t5 -n1 -r -p 'Press any key or wait five seconds...' key
-#     if [ "$?" -eq "0" ]; then
-#         echo 'A key was pressed.'
-#     else
-#         echo 'Five seconds passed. Continuing...'
-#     fi
-# }
-Logga::ExecuteX() {
-  all="${*}"
-
-  local cmd="${1}";
-  shift
-  options="${*}"
-
-  errormessage=$( eval "${cmd} ${options}" 2>&1 $var > /dev/null )
-
-  result="${?}"
+Logga::ServiceExists() {
+  printf "ServiceExists"
+  # $( (sudo systemctl is-active docker ) 2>&1
 }
-Logga::RepoExistsX() {
+
+Logga::RepoExists() {
   all="${*}"
 
   local cmd="${1}";
@@ -792,7 +786,7 @@ Logga::RepoExistsX() {
       fi
     fi
   else
-    errMsg="$( Logga::ErrorMessage $errCode )"
+    errMsg="$( Logga::GetErrorMessage $errCode )"
     Logga::Fatal "${errMsg} : '$cmd'"
   fi
 }
