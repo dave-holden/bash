@@ -273,17 +273,6 @@ Logga::UrlExists() {
   respMsg=$( curl -s -L -o /dev/null -w "%{response_code}" "${1}" )
   respCode="${?}"
 
-  # [ "${LOGGA_IS_DEBUG}" = true ] && {
-  #   Logga::Verbose "Logga::UrlExists"
-  #   [ "${respCode}" -ne "0" ] && Logga::Output "Logga::UrlExists : respCode : ${respCode} FAILED" || Logga::Output "Logga::UrlExists : respCode : ${respCode} PASSED"
-  #   [ "${respMsg}" -ne "200" ] && Logga::Output "Logga::UrlExists : respCode : NOT 200" || Logga::Output "Logga::UrlExists : respCode : EQ 200"
-  # }
-
-  # if [ "${respCode}" -ne 0 ] || [ "${respMsg}" -ne "200" ]; then
-  #   Logga::Error "in UrlExists : (${respCode}) - ${respMsg}"
-  #   return 1
-  # fi
-
   echo "${respMsg}"
   return 0
 }
@@ -354,11 +343,10 @@ Logga::Debug() {
 Logga::Log() {
   Logga::RequiredArgs "2" "${#}" "${@}"
 
+  local curLevel curType logLevel
   local passedType="${1}"
   local logMsg="${2}"
   local customType="${3}"
-
-  local curLevel curType logLevel
 
   logLevel="${LOGGA_LEVELS[${LOGGA_LEVEL}]}"
   curType=$( echo "${passedType}" | tr '[:lower:]' '[:upper:]' )
@@ -411,25 +399,12 @@ Logga::CmdExists() {
   found="${defaultValue}"
 
   if command -v $cmd >/dev/null 2>&1 ; then
-  # if command -v -- "$cmd" > /dev/null 2>&1; then
-    # found=0
     echo "0"
-    return
+    return "0"
   fi
 
   echo "${found}"
-}
-Logga::TestError() {
-  Logga::Output "Logga::TestError"
-  # thing=$( echo (( 0 / 1 )) )
-  thing=$( (( 0 / 1 )) )
-  err="${?}"
-  Logga::Output "Logga::TestError :: thing : ${thing}"
-  Logga::Output "Logga::TestError :: err : ${err}"
-  result=$(( 0 / 1))
-  Logga::Output "Logga::TestError :: result :1: ${result}"
-  result=$(( 1 / 0 ))
-  Logga::Output "Logga::TestError :: result :2: ${result}"
+  return "${found}"
 }
 Logga::ExecCmd() {
   local cmd="${1}";
@@ -494,35 +469,20 @@ Logga::ClearLine() {
 }
 Logga::PositionLeft() {
   # tput hpa 0  >&3
-  tput hpa 0 &> $(tty)
+  tput hpa 0 &> "$(tty)"
   # clear to end of line
-  tput el &> $(tty)
+  tput el &> "$(tty)"
   # tput el >&3
 }
 Logga::ResetLine() {
-  tput hpa 0 &> $(tty)
+  tput hpa 0 &> "$(tty)"
   # tput hpa 0  >&3
   # clear to end of line
-  tput el &> $(tty)
+  tput el &> "$(tty)"
   # tput el >&3
   Logga::Terminal "${*}"
 }
-Logga::ClearScreen() {
-  Logga::Output "Logga::ClearScreen"
-  # \033 stands for ESC (ANSI value 27).
 
-  # ESC [ is a kind of escape sequence called Control Sequence Introducer (CSI).
-
-  # CSI commands starts with ESC[ followed by zero or more parameters.
-
-  # \033[H (ie, ESC[H) and \033[J are CSI codes.
-
-  # \033[H moves the cursor to the top left corner of the screen (ie, the first column of the first row in the screen).
-
-  # and
-
-  # \033[J clears the part of the screen from the cursor to the end of the screen.
-}
 Logga::SlashSpinner() {
   # Logga::Terminal "Logga::SlashSpinner"
   # trap Logga::StopSpinner EXIT
@@ -583,17 +543,7 @@ Logga::GridSpinner() {
   wait $PID # capture exit code
   return $?
 }
-# shellcheck disable=SC2034
-Logga::MoonSpinner() {
-  emoji_new_moon=🌑
-  emoji_waxing_crescent_moon=🌒
-  emoji_first_quarter_moon=🌓
-  emoji_waxing_gibbous_moon=🌔
-  emoji_full_moon=🌕
-  emoji_waning_gibbous_moon=🌖
-  emoji_last_quarter_moon=🌗
-  emoji_waning_crescent_moon=🌘
-}
+
 Logga::ShowSpinner() {
   startMsg="${1:-Starting...}"
   endMsg="${2:-Ended!}"
@@ -620,31 +570,7 @@ Logga::hasTerm() {
   return 1
 }
 
-Logga::Contains() {
-  thing="${1}"
-  value="${2}"
-
-  # str='some text with @ in it'
-  # if [[ $str == *['!'@#\$%^\&*()_+]* ]]
-  # then
-  #   echo "It contains one of those" >& $( tty )
-  # fi
-
-  # value=88.90%
-  # thing=*[%]*
-
-  case $value in
-    "${thing}")
-      echo "${value} found in thing ${thing}"
-    ;;
-    *[!%.0123456789]* | *%*%* | *.*.*) ;;
-    ?*%) echo matches >& $( tty ) ;;
-  esac
-}
 # Output
-Logga::Outputv2() {
-  Logga::Print "%s\n" "${*}"
-}
 
 Logga::Print() {
 
@@ -683,7 +609,6 @@ Logga::Print() {
 
 Logga::Terminal() {
   # Output text var to respsecitve File Descriptor
-  # printf '%s' "${*}" >& "$(tty)"
   Logga::Print "${@}"
 }
 Logga::Output() {
@@ -709,7 +634,6 @@ Logga::LineCenter() {
   local suffix="${3}"
   local max_width="${4:-${LOGGA_PAGE_WIDTH}}"
   local char="${5:- }"
-
 
   termMsgWidth=$(( "${max_width}" - ( "${#prefix}" + "${#msg}" + "${#suffix}"  ) -4 ))
   termWidthLeft="$(( ${termMsgWidth} / 2 ))"
@@ -752,11 +676,51 @@ Logga::RestoreOutput() {
     stty sane
   fi
 }
+# WIP
 Logga::ServiceExists() {
   printf "ServiceExists"
-  # $( (sudo systemctl is-active docker ) 2>&1
+  $( (systemctl is-active docker ) 2>&1
+}
+Logga::ClearScreen() {
+  Logga::Output "Logga::ClearScreen"
+  # \033 stands for ESC (ANSI value 27).
+
+  # ESC [ is a kind of escape sequence called Control Sequence Introducer (CSI).
+
+  # CSI commands starts with ESC[ followed by zero or more parameters.
+
+  # \033[H (ie, ESC[H) and \033[J are CSI codes.
+
+  # \033[H moves the cursor to the top left corner of the screen (ie, the first column of the first row in the screen).
+
+  # and
+
+  # \033[J clears the part of the screen from the cursor to the end of the screen.
 }
 
+Logga::TestError() {
+  Logga::Output "Logga::TestError"
+  # thing=$( echo (( 0 / 1 )) )
+  thing=$( (( 0 / 1 )) )
+  err="${?}"
+  Logga::Output "Logga::TestError :: thing : ${thing}"
+  Logga::Output "Logga::TestError :: err : ${err}"
+  result=$(( 0 / 1))
+  Logga::Output "Logga::TestError :: result :1: ${result}"
+  result=$(( 1 / 0 ))
+  Logga::Output "Logga::TestError :: result :2: ${result}"
+}
+# shellcheck disable=SC2034
+Logga::MoonSpinner() {
+  emoji_new_moon=🌑
+  emoji_waxing_crescent_moon=🌒
+  emoji_first_quarter_moon=🌓
+  emoji_waxing_gibbous_moon=🌔
+  emoji_full_moon=🌕
+  emoji_waning_gibbous_moon=🌖
+  emoji_last_quarter_moon=🌗
+  emoji_waning_crescent_moon=🌘
+}
 Logga::RepoExists() {
   all="${*}"
 
@@ -789,4 +753,26 @@ Logga::RepoExists() {
     errMsg="$( Logga::GetErrorMessage $errCode )"
     Logga::Fatal "${errMsg} : '$cmd'"
   fi
+}
+
+Logga::Contains() {
+  thing="${1}"
+  value="${2}"
+
+  # str='some text with @ in it'
+  # if [[ $str == *['!'@#\$%^\&*()_+]* ]]
+  # then
+  #   echo "It contains one of those" >& $( tty )
+  # fi
+
+  # value=88.90%
+  # thing=*[%]*
+
+  case $value in
+    "${thing}")
+      echo "${value} found in thing ${thing}"
+    ;;
+    *[!%.0123456789]* | *%*%* | *.*.*) ;;
+    ?*%) echo matches >& $( tty ) ;;
+  esac
 }
